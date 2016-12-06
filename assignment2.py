@@ -178,7 +178,7 @@ def draw_line(graph, start, end, side_length):
 		# Plot a yellow line on the graph
 		plt.xlim(0, GRID_LENGTH*side_length)
 		plt.ylim(GRID_LENGTH*side_length, 0)
-		graph.plot(xSxE, ySyE, 'y-')
+		graph.plot(xSxE, ySyE, 'y-',linewidth=2)
 
 #Dimensionality Reduction
 def reduce(test_dat,train_dat,reduce_by,as_vectors=False):
@@ -205,7 +205,7 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False):
 	preprocessed = get_characters(testN, True)
 	classified_mat = classify(training_dat, train_lbl, reduce(preprocessed,train_dat,10,True) if reduced else preprocessed)
 	print(str(correctly_processed(classified_mat,TEST_LABELS,False))
-	  + " letters were correctly labeled which is about "
+	  + " letters were correctly labelled which is about "
 	  + str(correctly_processed(classified_mat,TEST_LABELS,True)) + "% of the letters.")
 	#Give every element a unique number because the functions to be used such as diagonal do not preserve indices
 	indices_grid=np.reshape(range(classified_mat.shape[0]), (GRID_LENGTH,GRID_LENGTH))
@@ -214,7 +214,7 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False):
 	for w_string in words_to_find:
 		w=[ord(ch)-96 for ch in list(w_string)]
 		#Perform the search
-		print("Seaching for " + w_string)
+		print("Searching for " + w_string)
 		lists_searched = []
 		#Search row by row
 		for r in range(0,GRID_LENGTH):
