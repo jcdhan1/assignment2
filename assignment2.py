@@ -110,30 +110,27 @@ def search(list_to_search,word,direction='A'):
 	unzipped=list(zip(*list_to_search))
 	orig_indices=list(unzipped[0])
 	
-	if (direction=='F'):
-		#Search forwards
+	if (direction=='F'): #Search forwards
 		arr_to_search=np.array(unzipped[1])
 		pos=0
 		forward=[]
 		while len(word)<=len(arr_to_search[pos:]):
 			num_correct = sum(word==(arr_to_search[pos:pos+len(word)]))
-			#Increase sorting speed later on, ignore totally incorrect results, only include totally correct results if any.
-			if num_correct>0:
+			if num_correct==len(word): #If an exact match is found, return it immediately with (0,0,0) to signify an exact match
+				return [(0,0,0),(orig_indices[pos],orig_indices[pos+len(word)-1],num_correct)]
+			if num_correct>0: #Ignore totally incorrect tuples to increase sorting speed later on.
 				forward+=[(orig_indices[pos],orig_indices[pos+len(word)-1],num_correct)]
-			elif num_correct==len(word):
-				return [(orig_indices[pos],orig_indices[pos+len(word)-1],num_correct)]
 			pos+=1
 		return forward
-	elif (direction=='B'):
-		#Search backwards
+	elif (direction=='B'): #Search backwards
 		reversed_list=list(list_to_search)
 		reversed_list.reverse()
 		return search(reversed_list,word,'F')
-	else:
-		#Search in all directions and combine
+	else: #Search in all directions and combine
 		return search(list_to_search,word,'F') + search(list_to_search,word,'B')
 
 def index_label_list(grid_to_search,row_col_diag):
+	#Combines rows, columns or diagonals of the indices grid with the respective labels in the classified matrix.
 	return list(zip(row_col_diag,[grid_to_search[indx] for indx in row_col_diag]))
 
 def trav_diag(grid_to_search,i_grid, l_searched, w_to_search, orientation="par"):
@@ -149,16 +146,21 @@ def trav_diag(grid_to_search,i_grid, l_searched, w_to_search, orientation="par")
 	diag_n=0
 	while journeys<2:
 		par_diag=np.diagonal(indices_g,diag_n)
-		l_searched+=search(index_label_list(grid_to_search,par_diag),w_to_search)
+		new_tuples=search(index_label_list(grid_to_search,par_diag),w_to_search)
+		if len(new_tuples)>0 and new_tuples[0]==(0,0,0): #Return immediately if exact match found.
+			return new_tuples
+		l_searched+=new_tuples
 		if len(w_to_search)<len(par_diag):
 			diag_n+=1-2*journeys
 		else:
 			if len(w_to_search)==len(par_diag):
 				diag_n=-1
 			journeys+=1
-	# Once parallel diagonals have been searched, search through perpendicular diagonals and add to the list.
-	if orientation=="par":
-		l_searched+=trav_diag(grid_to_search,i_grid,l_searched,w_to_search,"per")
+	if orientation=="par": #Once parallel diagonals have been searched, search through perpendicular diagonals and add to the list.
+		per_list=trav_diag(grid_to_search,i_grid,l_searched,w_to_search,"per")
+		if len(per_list)>0 and per_list[0]==(0,0,0): #if per_list contains an exact match, return it without combining with l_searched
+			return per_list
+		l_searched+=per_list
 	return l_searched
 
 #Display the result
@@ -171,14 +173,11 @@ def draw_line(graph, start, end, side_length):
 	if (isinstance(start, int)):
 		draw_line(graph, [start % GRID_LENGTH,start//GRID_LENGTH], [end % GRID_LENGTH,end//GRID_LENGTH], side_length)
 	else:
-		# get starting x-coordinate, get ending x-coordinate.
-		xSxE=[start[0]*side_length+GRID_LENGTH,end[0]*side_length+GRID_LENGTH]
-		# get starting y-coordinate, get ending y-coordinate.
-		ySyE=[start[1]*side_length+GRID_LENGTH,end[1]*side_length+GRID_LENGTH]
-		# Plot a yellow line on the graph
+		xSxE=[start[0]*side_length+GRID_LENGTH,end[0]*side_length+GRID_LENGTH] #get starting x-coordinate, get ending x-coordinate.
+		ySyE=[start[1]*side_length+GRID_LENGTH,end[1]*side_length+GRID_LENGTH] #get starting y-coordinate, get ending y-coordinate.
 		plt.xlim(0, GRID_LENGTH*side_length)
 		plt.ylim(GRID_LENGTH*side_length, 0)
-		graph.plot(xSxE, ySyE, 'y-',linewidth=2)
+		graph.plot(xSxE, ySyE, 'y-',linewidth=2) #Plot a yellow line on the graph
 
 #Dimensionality Reduction
 def reduce(test_dat,train_dat,reduce_by,as_vectors=False):
@@ -216,17 +215,17 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False):
 		#Perform the search
 		print("Searching for " + w_string)
 		lists_searched = []
-		#Search row by row
-		for r in range(0,GRID_LENGTH):
+		for r in range(0,GRID_LENGTH): #Search row by row
 			lists_searched+=search(index_label_list(classified_mat,indices_grid[r]),w)
-		#Search column by column
-		for c in range(0,GRID_LENGTH):
-			lists_searched+=search(index_label_list(classified_mat,indices_grid[:,c]),w)
-		#Search all diagonals that are longer than or just as long as the word.
+		if lists_searched[0]!=(0,0,0): #Search column by column if an exact match still 
+			for c in range(0,GRID_LENGTH):
+				lists_searched+=search(index_label_list(classified_mat,indices_grid[:,c]),w)
+		if lists_searched[0]!=(0,0,0): #earch all diagonals that are longer than or just as long as the word if still no exact match
 			lists_searched=trav_diag(classified_mat,indices_grid,lists_searched,w)
-		#Likeliest is the tuple that has the biggest third element
-		likeliest=sorted(lists_searched,key=lambda trituple: trituple[2])[len(lists_searched)-1]
-		#Return starting index and ending index for this word.
+		if lists_searched[0]==(0,0,0): #If an exact match was found, the likeliest is the element at index [1]
+			likeliest=lists_searched[1]
+		else: #Otherwise, the likeliest is the tuple that has the biggest third element
+			likeliest=sorted(lists_searched,key=lambda trituple: trituple[2])[len(lists_searched)-1]
 		likeliest_tuple=likeliest[:2]
 		lines+=[likeliest_tuple]
 		#Display the result
@@ -236,13 +235,9 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False):
 	print(str(sum([t[0] and t[1] for t in (np.array(CORRECT_LINES)==(np.array(lines)))])) + " out of " + str(len(words)) + " found correctly.")
 	plt.gcf().savefig(get_name(testN) + ("_reduced" if reduced else ""), dpi=100)
 
-#Searching test1 with 900 features.
+#Trial 1
 wordsearch(test1, words, train_data, train_labels)
-#Searching test1 with reduction to 10 features.
+#Trial 2
 wordsearch(test1, words, train_data, train_labels,True)
-
-#Noise Robustness
-#Searching test2 with 900 features.
-wordsearch(test2, words, train_data, train_labels)
-#Searching test2, with reduction to 10 features.
+#Trial 3
 wordsearch(test2, words, train_data, train_labels,True)
