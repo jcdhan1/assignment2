@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 import types
-from scipy import linalg
+from scipy import linalg,fftpack
 
 #Pre-processing
 GRID_LENGTH=15
@@ -191,7 +191,8 @@ def reduce(test_dat,train_dat,reduce_by,as_vectors=False):
 	w, v = linalg.eigh(covx, eigvals=(N-reduce_by, N-1))
 	v = np.fliplr(v)
 	if as_vectors:
-		return np.dot((test_dat - np.mean(train_dat)), v)
+		to_return=np.dot((test_dat - np.mean(train_dat)), v)
+		return np.array([pcadct[0]+pcadct[1] for pcadct in zip([fftpack.dct(vec,n=reduce_by) for vec in test_dat],list(to_return))])
 	else:
 		return np.dot(np.dot((test_dat - np.mean(train_dat)), v), v.transpose()) + np.mean(train_dat)
 
