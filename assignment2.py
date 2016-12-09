@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 import types
-from scipy import linalg,fftpack
+import operator
+from scipy import linalg
 
 #Pre-processing
 GRID_LENGTH=15
@@ -169,7 +170,6 @@ def draw_line(graph, start, end, side_length):
 	   graph: the pyplot to draw on
 	   start_letter: where the line begins, can be a coordinate or index.
 	   end_letter: where the line ends, can be a coordinate or index."""
-	
 	if (isinstance(start, int)):
 		draw_line(graph, [start % GRID_LENGTH,start//GRID_LENGTH], [end % GRID_LENGTH,end//GRID_LENGTH], side_length)
 	else:
@@ -180,30 +180,27 @@ def draw_line(graph, start, end, side_length):
 		graph.plot(xSxE, ySyE, 'y-',linewidth=2) #Plot a yellow line on the graph
 
 #Dimensionality Reduction
-def reduce(test_dat,train_dat,reduce_by,as_vectors=False):
-	""" test_data: Testing data to reduce
-	   train_data: Training data to use
-		reduce_by: The number of components at the end
-	   as_vectors: If true it returns an array of vectors with dimensions equal to reduce_by, in false,
-				   The number dimensions of the output are the same as that of test_dat, allowing it to be plotted."""
+def reduce(test_dat,train_dat,n,pca_indices=range):
+	"""   test_data: Testing data to reduce
+		 train_data: Training data to use
+				  n: The number of features to be returned.
+		pca_indices: The indices of the features. If unspecified, the indices of the features are in range(n)."""
+	pca_i=pca_indices(n) if type(pca_indices) is type else pca_indices #Technically, range(n) can't be the default value.
 	covx = np.cov(train_data, rowvar=0)
-	N = covx.shape[0]
-	w, v = linalg.eigh(covx, eigvals=(N-reduce_by, N-1))
+	N_Orig = covx.shape[0]
+	w, v = linalg.eigh(covx, eigvals=(N_Orig-(pca_i[len(pca_i)-1]+1), N_Orig-1))
 	v = np.fliplr(v)
-	if as_vectors:
-		to_return=np.dot((test_dat - np.mean(train_dat)), v)
-		return np.array([pcadct[0]+pcadct[1] for pcadct in zip([fftpack.dct(vec,n=reduce_by) for vec in test_dat],list(to_return))])
-	else:
-		return np.dot(np.dot((test_dat - np.mean(train_dat)), v), v.transpose()) + np.mean(train_dat)
+	features=np.dot((test_dat - np.mean(train_dat)), v) 
+	return np.array([[vec[k] for k in pca_i]for vec in features]) #Return features specified by pca_i
 
 #Loop over all words
-def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False):
+def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False,pca_i=range(10)):
 	print("Solving " + get_name(testN) + (" With Reduction" if reduced else ""))
 	plt.matshow(testN, cmap=cm.gray)
 	#Classification, Pre-processing, Dimensionality Reduction
-	training_dat = reduce(train_dat,train_dat,10,True) if reduced else train_dat
+	training_dat = reduce(train_dat,train_dat,10,pca_i) if reduced else train_dat
 	preprocessed = get_characters(testN, True)
-	classified_mat = classify(training_dat, train_lbl, reduce(preprocessed,train_dat,10,True) if reduced else preprocessed)
+	classified_mat = classify(training_dat, train_lbl, reduce(preprocessed,train_dat,10,pca_i) if reduced else preprocessed)
 	print(str(correctly_processed(classified_mat,TEST_LABELS,False))
 	  + " letters were correctly labelled which is about "
 	  + str(correctly_processed(classified_mat,TEST_LABELS,True)) + "% of the letters.")
@@ -239,6 +236,7 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False):
 #Trial 1
 wordsearch(test1, words, train_data, train_labels)
 #Trial 2
-wordsearch(test1, words, train_data, train_labels,True)
+PCA_I=[1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
+wordsearch(test1, words, train_data, train_labels,True,PCA_I)
 #Trial 3
-wordsearch(test2, words, train_data, train_labels,True)
+wordsearch(test2, words, train_data, train_labels,True,PCA_I)
