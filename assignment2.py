@@ -9,7 +9,6 @@ import types
 import operator
 from scipy import linalg
 
-#Pre-processing
 GRID_LENGTH=15
 BLOCK_LENGTH=30
 
@@ -98,26 +97,26 @@ def correctly_processed(classified,actual,percentage):
 			correct+=1
 	return int(correct/(0.01*classified.shape[0] if percentage else 1))
 
-#Perform the search
 def search(list_to_search,word,direction='A'):
-	"""This returns a list of tuples. In each tuple, the first value is the index of where the word could begin, the second is the index of
-	   where it could end, and the third is the number of characters that match the word to search with.
-	   list_to_search: list of tuples. In each tuple, the first value is the original index of the label, the second is the label found
-					   using classify.
-	   word: word to search with
-	   direction: direction to search in. It can be 'F' for forward, 'B' for back or 'A' for all."""
+	"""This returns a list of tuples. In each tuple, the first value is the index of where the word could begin,
+	   the second is the index of where it could end, and the third is the number of characters that match the
+	   word to search with. I coded this to work fast if there are exact matches found. It immediately returns. 
+
+	   list_to_search: list of tuples. In each tuple, the first value is the original index of the label,
+					   the second is the label found using classify.
+				 word: word to search with
+			direction: direction to search in. It can be 'F' for forward, 'B' for back or 'A' for all."""
 	if (len(word)>len(list_to_search)):
 		return []
 	unzipped=list(zip(*list_to_search))
 	orig_indices=list(unzipped[0])
-	
 	if (direction=='F'): #Search forwards
 		arr_to_search=np.array(unzipped[1])
 		pos=0
 		forward=[]
 		while len(word)<=len(arr_to_search[pos:]):
 			num_correct = sum(word==(arr_to_search[pos:pos+len(word)]))
-			if num_correct==len(word): #If an exact match is found, return it immediately with (0,0,0) to signify an exact match
+			if num_correct==len(word): #If an exact match is found, return it immediately with (0,0,0).
 				return [(0,0,0),(orig_indices[pos],orig_indices[pos+len(word)-1],num_correct)]
 			if num_correct>0: #Ignore totally incorrect tuples to increase sorting speed later on.
 				forward+=[(orig_indices[pos],orig_indices[pos+len(word)-1],num_correct)]
@@ -135,13 +134,15 @@ def index_label_list(grid_to_search,row_col_diag):
 	return list(zip(row_col_diag,[grid_to_search[indx] for indx in row_col_diag]))
 
 def trav_diag(grid_to_search,i_grid, l_searched, w_to_search, orientation="par"):
-	"""	 i_grid: The grid of original indices.
+	"""This function is for searching all diagonals.
+
+			i_grid: The grid of original indices.
 		l_searched: The current lists searched.
 	   w_to_search: word with characters converted to label numbers
 	   orientation: "par" for parallel to leading diagonal, "per" for perpendicular to leading diagonal."""
 	
-	"""Diagonals perpendicular to the leading diagonal of i_grid are equivalent to diagonals parallel to the leading diagonal
-	   of the reflection of i_grid."""
+	"""Diagonals perpendicular to the leading diagonal of i_grid are equivalent to diagonals parallel
+	   to the leading diagonal of the reflection of i_grid."""
 	indices_g=np.fliplr(i_grid) if orientation=="per" else i_grid
 	journeys=0
 	diag_n=0
@@ -157,34 +158,35 @@ def trav_diag(grid_to_search,i_grid, l_searched, w_to_search, orientation="par")
 			if len(w_to_search)==len(par_diag):
 				diag_n=-1
 			journeys+=1
-	if orientation=="par": #Once parallel diagonals have been searched, search through perpendicular diagonals and add to the list.
+	if orientation=="par": #Once parallel diagonals have been searched, search through perpendicular diagonals.
 		per_list=trav_diag(grid_to_search,i_grid,l_searched,w_to_search,"per")
-		if len(per_list)>0 and per_list[0]==(0,0,0): #if per_list contains an exact match, return it without combining with l_searched
+		if len(per_list)>0 and per_list[0]==(0,0,0): #if per_list has an exact match, don't combine with l_searched
 			return per_list
 		l_searched+=per_list
 	return l_searched
 
-#Display the result
 def draw_line(graph, start, end, side_length):
 	"""This draws a line on a pyplot between two letters.
+
 	   graph: the pyplot to draw on
 	   start_letter: where the line begins, can be a coordinate or index.
 	   end_letter: where the line ends, can be a coordinate or index."""
 	if (isinstance(start, int)):
 		draw_line(graph, [start % GRID_LENGTH,start//GRID_LENGTH], [end % GRID_LENGTH,end//GRID_LENGTH], side_length)
 	else:
-		xSxE=[start[0]*side_length+GRID_LENGTH,end[0]*side_length+GRID_LENGTH] #get starting x-coordinate, get ending x-coordinate.
-		ySyE=[start[1]*side_length+GRID_LENGTH,end[1]*side_length+GRID_LENGTH] #get starting y-coordinate, get ending y-coordinate.
+		xSxE=[start[0]*side_length+GRID_LENGTH,end[0]*side_length+GRID_LENGTH]
+		ySyE=[start[1]*side_length+GRID_LENGTH,end[1]*side_length+GRID_LENGTH]
 		plt.xlim(0, GRID_LENGTH*side_length)
 		plt.ylim(GRID_LENGTH*side_length, 0)
 		graph.plot(xSxE, ySyE, 'y-',linewidth=2) #Plot a yellow line on the graph
 
-#Dimensionality Reduction
 def reduce(test_dat,train_dat,n,pca_indices=range):
-	"""   test_data: Testing data to reduce
-		 train_data: Training data to use
-				  n: The number of features to be returned.
-		pca_indices: The indices of the features. If unspecified, the indices of the features are in range(n)."""
+	"""Using principle component analysis to reduce 900 features down to 10 features.
+
+		 test_data: Testing data to reduce
+		train_data: Training data to use
+				 n: The number of features to be returned.
+	   pca_indices: The indices of the features. If unspecified, the indices of the features are in range(n)."""
 	pca_i=pca_indices(n) if type(pca_indices) is type else pca_indices #Technically, range(n) can't be the default value.
 	covx = np.cov(train_data, rowvar=0)
 	N_Orig = covx.shape[0]
@@ -193,8 +195,15 @@ def reduce(test_dat,train_dat,n,pca_indices=range):
 	features=np.dot((test_dat - np.mean(train_dat)), v) 
 	return np.array([[vec[k] for k in pca_i]for vec in features]) #Return features specified by pca_i
 
-#Loop over all words
 def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False,pca_i=range(10)):
+	"""This is the main wordsearch function.
+
+			   testN: The test data e.g. test1 or test2
+	   words_to_find: words
+		   train_dat: The training data
+		   train_lbl: The labels of the training data
+			 reduced: If this is true, the testing data is reduced down to 10 features before classication.
+			   pca_i: The indices of the features to use, if empty, it assumes 0 up to and including 9."""
 	print("Solving " + get_name(testN) + (" With Reduction" if reduced else ""))
 	plt.matshow(testN, cmap=cm.gray)
 	#Classification, Pre-processing, Dimensionality Reduction
@@ -218,7 +227,7 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False,pca_i=ra
 		if lists_searched[0]!=(0,0,0): #Search column by column if an exact match still 
 			for c in range(0,GRID_LENGTH):
 				lists_searched+=search(index_label_list(classified_mat,indices_grid[:,c]),w)
-		if lists_searched[0]!=(0,0,0): #earch all diagonals that are longer than or just as long as the word if still no exact match
+		if lists_searched[0]!=(0,0,0): #Search  diagonals that are longer than or just as long as the word
 			lists_searched=trav_diag(classified_mat,indices_grid,lists_searched,w)
 		if lists_searched[0]==(0,0,0): #If an exact match was found, the likeliest is the element at index [1]
 			likeliest=lists_searched[1]
@@ -230,13 +239,26 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False,pca_i=ra
 		print("Line from index " + str(likeliest_tuple[0]) + " to index " + str(likeliest_tuple[1]))
 		draw_line(plt,int(likeliest_tuple[0]), int(likeliest_tuple[1]), BLOCK_LENGTH)
 	print("Solved")
-	print(str(sum([t[0] and t[1] for t in (np.array(CORRECT_LINES)==(np.array(lines)))])) + " out of " + str(len(words)) + " found correctly.")
+	print(str(sum([t[0] and t[1] for t in (np.array(CORRECT_LINES)==(np.array(lines)))]))
+		  + " out of " + str(len(words)) + " found correctly.")
 	plt.gcf().savefig(get_name(testN) + ("_reduced" if reduced else ""), dpi=100)
+
+PCA_I=[1, 2, 3, 5, 6, 7, 8, 9, 10, 11] #Indices of features selected through Principle Component Analysis.
+
+train1_data = train_data[0:599, :]
+train1_labels = train_labels[0:599]
+test1_data = train_data[599:, :]
+test1_labels = train_labels[599:]
+n_test = test1_labels.shape[0]
+test1_guessed = classify(train1_data, train1_labels, test1_data)
+test1_guessed_reduced = classify(reduce(train1_data,train1_data,10,PCA_I),
+								 train1_labels, reduce(test1_data,train1_data,10,PCA_I))
+print(str(np.sum(test1_guessed == test1_labels) * 100.0 / n_test) + "% correct without reduction") #Should be 92.0%
+print(str(np.sum(test1_guessed_reduced == test1_labels) * 100.0 / n_test) + "% correct with reduction") #Shouldbe 94.0%
 
 #Trial 1
 wordsearch(test1, words, train_data, train_labels)
 #Trial 2
-PCA_I=[1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
 wordsearch(test1, words, train_data, train_labels,True,PCA_I)
 #Trial 3
 wordsearch(test2, words, train_data, train_labels,True,PCA_I)
