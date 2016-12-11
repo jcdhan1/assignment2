@@ -19,7 +19,7 @@ test1 = data['test1']
 test2 = data['test2']
 words  = data['words']
 
-#What letters the classifer gave to each block in test1 or test2 will be compared to this.
+#The letters the classifer gave to each block in test1 or test2 will be compared to this.
 TEST_LABELS = np.array([14,18,25, 5,12, 7,14, 1,12,14,12, 5,16, 2,18,
 						21,14,15,14, 6, 8, 2,18,15,16, 5,18,18,13,16,
 						 3,15,14, 2,20, 8, 7, 9,18,23,25, 2,14, 1, 6,
@@ -36,21 +36,25 @@ TEST_LABELS = np.array([14,18,25, 5,12, 7,14, 1,12,14,12, 5,16, 2,18,
 						14, 2,18,20,18,19,12,14, 5, 1, 8, 1, 7, 8,14,
 						 1,12, 5,21,20,14, 5,11,23,14, 9,12, 5,19,12])
 
-#The start and end points of each line drawn by wordsearch in each trial will be compared to this.
-CORRECT_LINES = [(192,132),(180, 68),(154, 42),( 92, 32),( 30, 75),( 55, 51),
-				 (186,184),( 63,111),( 44,156),(131,191),(165, 90),( 74,172),
-				 (217,214),(  8,  2),(219,107),( 29, 85),( 89,164),(151,106),
-				 ( 91, 16),(  1,113),( 22, 26),(223,103),(59, 157),( 39, 34)]
+#The starts and ends of each line drawn by wordsearch in each will be compared to this.
+CORRECT_LINES = [(192,132),(180, 68),(154, 42),( 92, 32),( 30, 75),( 55, 51),(186,184),
+				 ( 63,111),( 44,156),(131,191),(165, 90),( 74,172),(217,214),(  8,  2),
+				 (219,107),( 29, 85),( 89,164),(151,106),( 91, 16),(  1,113),( 22, 26),
+				 (223,103),(59, 157),( 39, 34)]
 
 def get_name(testN):
 	"""Returns the name of the test data as a string.
-	   testN: test1 or test2"""
+
+	   testN: test1 or test2
+	"""
 	return "test1" if np.ndarray.tolist(test1)==np.ndarray.tolist(testN) else "test2"
 
 def get_characters(ndimarray, as_vectors):
 	"""This allows the extraction of individual character images as 30 by 30 matrices
+
 	   ndimarray: the matrix of pixels for every character
-	   as_vectors: if this is true, a 225 by 900-element matrix is returned."""
+	   as_vectors: if this is true, a 225 by 900-element matrix is returned.
+	"""
 	letters = []
 	cols = (ndimarray.shape[1])
 	rows = (ndimarray.shape[0])
