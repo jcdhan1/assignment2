@@ -19,7 +19,7 @@ test1 = data['test1']
 test2 = data['test2']
 words  = data['words']
 
-#The letters the classifer gave to each block in test1 or test2 will be compared to this.
+#This is used to measure how much the classify function gets correct on test1 or test2.
 TEST_LABELS = np.array([14,18,25, 5,12, 7,14, 1,12,14,12, 5,16, 2,18,
 						21,14,15,14, 6, 8, 2,18,15,16, 5,18,18,13,16,
 						 3,15,14, 2,20, 8, 7, 9,18,23,25, 2,14, 1, 6,
@@ -133,7 +133,7 @@ def search(list_to_search,word,direction='A'):
 	else: #Search in all directions and combine
 		return search(list_to_search,word,'F') + search(list_to_search,word,'B')
 
-def index_label_list(grid_to_search,row_col_diag):
+def i_label_list(grid_to_search,row_col_diag):
 	#Combines rows, columns or diagonals of the indices grid with the respective labels in the classified matrix.
 	return list(zip(row_col_diag,[grid_to_search[indx] for indx in row_col_diag]))
 
@@ -152,7 +152,7 @@ def trav_diag(grid_to_search,i_grid, l_searched, w_to_search, orientation="par")
 	diag_n=0
 	while journeys<2:
 		par_diag=np.diagonal(indices_g,diag_n)
-		new_tuples=search(index_label_list(grid_to_search,par_diag),w_to_search)
+		new_tuples=search(i_label_list(grid_to_search,par_diag),w_to_search)
 		if len(new_tuples)>0 and new_tuples[0]==(0,0,0): #Return immediately if exact match found.
 			return new_tuples
 		l_searched+=new_tuples
@@ -206,18 +206,26 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False,pca_i=ra
 	   words_to_find: words
 		   train_dat: The training data
 		   train_lbl: The labels of the training data
-			 reduced: If this is true, the testing data is reduced down to 10 features before classication.
-			   pca_i: The indices of the features to use, if empty, it assumes 0 up to and including 9."""
+			 reduced: If this is true, the testing data is reduced down to
+					  10 features before classication.
+			   pca_i: The indices of the features to use, if empty,
+					  it assumes 0 up to and including 9.
+	"""
 	print("Solving " + get_name(testN) + (" With Reduction" if reduced else ""))
 	plt.matshow(testN, cmap=cm.gray)
 	#Classification, Pre-processing, Dimensionality Reduction
 	training_dat = reduce(train_dat,train_dat,10,pca_i) if reduced else train_dat
 	preprocessed = get_characters(testN, True)
-	classified_mat = classify(training_dat, train_lbl, reduce(preprocessed,train_dat,10,pca_i) if reduced else preprocessed)
+	if reduced:
+		classified_mat = classify(training_dat, train_lbl,
+								  reduce(preprocessed,train_dat,10,pca_i))
+	else:
+		classified_mat = classify(training_dat, train_lbl, preprocessed)
 	print(str(correctly_processed(classified_mat,TEST_LABELS,False))
 	  + " letters were correctly labelled which is about "
 	  + str(correctly_processed(classified_mat,TEST_LABELS,True)) + "% of the letters.")
-	#Give every element a unique number because the functions to be used such as diagonal do not preserve indices
+	"""Give every element a unique number because the functions to be used such as
+	   diagonal do not preserve indices."""
 	indices_grid=np.reshape(range(classified_mat.shape[0]), (GRID_LENGTH,GRID_LENGTH))
 	#Select a word to find
 	lines=[]
@@ -227,27 +235,29 @@ def wordsearch(testN, words_to_find, train_dat, train_lbl,reduced=False,pca_i=ra
 		print("Searching for " + w_string)
 		lists_searched = []
 		for r in range(0,GRID_LENGTH): #Search row by row
-			lists_searched+=search(index_label_list(classified_mat,indices_grid[r]),w)
-		if lists_searched[0]!=(0,0,0): #Search column by column if an exact match still 
+			lists_searched+=search(i_label_list(classified_mat,indices_grid[r]),w)
+		if lists_searched[0]!=(0,0,0): #Search column by column if no exact match yet.
 			for c in range(0,GRID_LENGTH):
-				lists_searched+=search(index_label_list(classified_mat,indices_grid[:,c]),w)
-		if lists_searched[0]!=(0,0,0): #Search  diagonals that are longer than or just as long as the word
+				lists_searched+=search(i_label_list(classified_mat,indices_grid[:,c]),w)
+		if lists_searched[0]!=(0,0,0): #Search all diagonals if no exact match yet
 			lists_searched=trav_diag(classified_mat,indices_grid,lists_searched,w)
-		if lists_searched[0]==(0,0,0): #If an exact match was found, the likeliest is the element at index [1]
+		if lists_searched[0]==(0,0,0): #Exact matches at index [1].
 			likeliest=lists_searched[1]
-		else: #Otherwise, the likeliest is the tuple that has the biggest third element
-			likeliest=sorted(lists_searched,key=lambda trituple: trituple[2])[len(lists_searched)-1]
+		else: #Otherwise, the likeliest is the tuple that has the biggest third element.
+			likeliest=sorted(lists_searched,key=lambda t: t[2])[len(lists_searched)-1]
 		likeliest_tuple=likeliest[:2]
 		lines+=[likeliest_tuple]
 		#Display the result
-		print("Line from index " + str(likeliest_tuple[0]) + " to index " + str(likeliest_tuple[1]))
+		print("Line from index "
+			  + str(likeliest_tuple[0]) + " to index " + str(likeliest_tuple[1]))
 		draw_line(plt,int(likeliest_tuple[0]), int(likeliest_tuple[1]), BLOCK_LENGTH)
 	print("Solved")
 	print(str(sum([t[0] and t[1] for t in (np.array(CORRECT_LINES)==(np.array(lines)))]))
 		  + " out of " + str(len(words)) + " found correctly.")
 	plt.gcf().savefig(get_name(testN) + ("_reduced" if reduced else ""), dpi=100)
 
-PCA_I=[1, 2, 3, 5, 6, 7, 8, 9, 10, 11] #Indices of features selected through Principle Component Analysis.
+#Indices of features selected through Principle Component Analysis.
+PCA_I=[1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
 
 train1_data = train_data[0:599, :]
 train1_labels = train_labels[0:599]
@@ -257,8 +267,10 @@ n_test = test1_labels.shape[0]
 test1_guessed = classify(train1_data, train1_labels, test1_data)
 test1_guessed_reduced = classify(reduce(train1_data,train1_data,10,PCA_I),
 								 train1_labels, reduce(test1_data,train1_data,10,PCA_I))
-print(str(np.sum(test1_guessed == test1_labels) * 100.0 / n_test) + "% correct without reduction") #Should be 92.0%
-print(str(np.sum(test1_guessed_reduced == test1_labels) * 100.0 / n_test) + "% correct with reduction") #Shouldbe 94.0%
+print(str(np.sum(test1_guessed == test1_labels) * 100.0 / n_test)
+	  + "% correct without reduction") #Should be 92.0%
+print(str(np.sum(test1_guessed_reduced == test1_labels) * 100.0 / n_test)
+	  + "% correct with reduction") #Shouldbe 94.0%
 
 #Trial 1
 wordsearch(test1, words, train_data, train_labels)
